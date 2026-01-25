@@ -1,0 +1,51 @@
+services:
+  # 後端 Django API 服務
+  - type: web
+    name: market-backend
+    runtime: python
+    plan: free
+    buildCommand: cd backend && pip install -r requirements.txt && python manage.py collectstatic --no-input && python manage.py migrate --no-input
+    startCommand: cd backend && gunicorn config.wsgi:application --bind 0.0.0.0:$PORT
+    envVars:
+      - key: PYTHON_VERSION
+        value: 3.11.0
+      - key: SECRET_KEY
+        generateValue: true
+      - key: DEBUG
+        value: "False"
+      - key: DATABASE_URL
+        fromDatabase:
+          name: market-db
+          property: connectionString
+      - key: ALLOWED_HOSTS
+        sync: false  # 將在 Render 自動設定
+      - key: FRONTEND_URL
+        fromService:
+          type: web
+          name: market-frontend
+          property: host
+    healthCheckPath: /api/
+
+  # 前端 React 服務
+  - type: web
+    name: market-frontend
+    runtime: node
+    plan: free
+    buildCommand: cd frontend && npm install && npm run build
+    staticPublishPath: ./frontend/dist
+    envVars:
+      - key: NODE_VERSION
+        value: 20.x
+      - key: VITE_API_URL
+        fromService:
+          type: web
+          name: market-backend
+          property: host
+
+  # PostgreSQL 資料庫
+  - type: pspg
+    name: market-db
+    plan: free
+    databaseName: market
+    user: market_user
+
