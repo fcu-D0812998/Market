@@ -4,6 +4,18 @@ import type { Product, ProductVariant } from '../lib/api';
 
 export type CartItem = { product: Product; quantity: number; variantId?: number };
 
+// 統一的 variant 查找邏輯：消除重複
+function getVariant(product: Product, variantId?: number): ProductVariant | undefined {
+  if (!variantId || !product.variants) return undefined;
+  return product.variants.find((v) => v.id === variantId);
+}
+
+// 統一的價格計算邏輯
+function getItemPrice(item: CartItem): number {
+  const variant = getVariant(item.product, item.variantId);
+  return Number(variant?.price || item.product.price);
+}
+
 type CartState = { items: CartItem[] };
 
 type Action =
@@ -68,13 +80,7 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
   const [state, dispatch] = useReducer(reducer, { items: [] });
   const api = useMemo<CartApi>(() => {
     const totalQuantity = state.items.reduce((sum, it) => sum + it.quantity, 0);
-    const totalAmount = state.items.reduce((sum, it) => {
-      // 如果有 variantId，使用變體的價格；否則使用商品價格
-      const price = it.variantId
-        ? Number(it.product.variants?.find((v) => v.id === it.variantId)?.price || it.product.price)
-        : Number(it.product.price);
-      return sum + price * it.quantity;
-    }, 0);
+    const totalAmount = state.items.reduce((sum, it) => sum + getItemPrice(it) * it.quantity, 0);
     return {
       items: state.items,
       add: (p, quantity = 1, variantId) => dispatch({ type: 'add', product: p, quantity, variantId }),

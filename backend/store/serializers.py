@@ -75,11 +75,22 @@ class ProductWriteSerializer(serializers.ModelSerializer):
         if tag_names is not None:
             tags = [Tag.objects.get_or_create(name=n)[0] for n in tag_names]
             product.tags.set(tags)
-        # 更新變體（簡化：刪除舊的，建立新的）
+        # 更新變體：更新現有的（有 id），新增新的（無 id），刪除不在列表中的
         if variants_data is not None:
-            ProductVariant.objects.filter(product=product).delete()
+            existing_ids = {v.get("id") for v in variants_data if v.get("id")}
+            # 刪除不在新列表中的變體
+            ProductVariant.objects.filter(product=product).exclude(id__in=existing_ids).delete()
+            # 更新或創建變體
             for variant_data in variants_data:
-                ProductVariant.objects.create(product=product, **variant_data)
+                variant_id = variant_data.get("id")
+                if variant_id and ProductVariant.objects.filter(id=variant_id, product=product).exists():
+                    # 創建新的 dict 避免修改原始數據
+                    update_data = {k: v for k, v in variant_data.items() if k != "id"}
+                    ProductVariant.objects.filter(id=variant_id).update(**update_data)
+                else:
+                    # 創建新的 dict 排除 id（如果存在）
+                    create_data = {k: v for k, v in variant_data.items() if k != "id"}
+                    ProductVariant.objects.create(product=product, **create_data)
         return product
 
 
@@ -165,20 +176,23 @@ class UserSerializer(serializers.Serializer):
     username = serializers.CharField()
 
 
+def _get_variant(product: Product, variant_id: int | None) -> ProductVariant | None:
+    """統一的 variant 查找邏輯：消除重複查詢"""
+    if not variant_id:
+        return None
+    return product.variants.filter(id=variant_id, is_active=True).first()
+
+
 def get_product_price(product: Product, variant_id: int | None) -> Decimal:
     """統一的價格計算邏輯：如果有 variant_id 且存在，使用 variant 價格，否則使用 product 價格"""
-    if variant_id:
-        variant = product.variants.filter(id=variant_id, is_active=True).first()
-        return variant.price if variant else product.price
-    return product.price
+    variant = _get_variant(product, variant_id)
+    return variant.price if variant else product.price
 
 
 def get_product_name(product: Product, variant_id: int | None) -> str:
     """統一的商品名稱邏輯：如果有 variant_id 且存在，組合名稱，否則使用 product 名稱"""
-    if variant_id:
-        variant = product.variants.filter(id=variant_id, is_active=True).first()
-        return f"{product.name} - {variant.name}" if variant else product.name
-    return product.name
+    variant = _get_variant(product, variant_id)
+    return f"{product.name} - {variant.name}" if variant else product.name
 
 
 def calculate_total(items: list[dict], products_by_id: dict[int, Product]) -> Decimal:

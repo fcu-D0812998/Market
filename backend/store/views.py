@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-from datetime import datetime
 from random import randint
 
 from django.contrib.auth import login, logout
@@ -233,6 +232,7 @@ class AdminSettingsView(APIView):
         serializer = ShopSettingsSerializer(s, data=request.data, partial=True)
         serializer.is_valid(raise_exception=True)
         serializer.save()
+        _clear_settings_cache()  # 清除緩存，下次查詢時重新載入
         return Response(serializer.data)
 
 
@@ -261,9 +261,21 @@ def _line_chat_url(line_oa_id: str) -> str:
     return f"https://line.me/R/ti/p/{line_oa_id}"
 
 
+# 模組級緩存：避免每次請求都查詢資料庫
+_settings_cache: ShopSettings | None = None
+
+
 def _get_settings() -> ShopSettings:
-    settings, _ = ShopSettings.objects.get_or_create(singleton_key="default")
-    return settings
+    global _settings_cache
+    if _settings_cache is None:
+        _settings_cache, _ = ShopSettings.objects.get_or_create(singleton_key="default")
+    return _settings_cache
+
+
+def _clear_settings_cache() -> None:
+    """清除設定緩存（在設定更新時調用）"""
+    global _settings_cache
+    _settings_cache = None
 
 
 def _extras_for_order(order: Order) -> dict:
@@ -285,7 +297,7 @@ def _extras_for_order(order: Order) -> dict:
 
 def _generate_order_no() -> str:
     """生成訂單編號，格式：MKT-YYYYMMDD-HHMMSS-RAND"""
-    now: datetime = timezone.localtime()
+    now = timezone.localtime()
     return f"MKT-{now:%Y%m%d-%H%M%S}-{randint(1000, 9999)}"
 
 
@@ -339,28 +351,26 @@ class OrderCreateView(APIView):
             )
 
         with transaction.atomic():
-            # 使用資料庫唯一約束保證訂單編號唯一性，衝突時重試一次
-            order_no = _generate_order_no()
-            try:
-                order = Order.objects.create(
-                    order_no=order_no,
-                    customer_name=data["customer_name"],
-                    customer_phone=data["customer_phone"],
-                    pickup_store_address=data["pickup_store_address"],
-                    total_amount=total_amount,
-                    status=Order.Status.NEW,
-                )
-            except IntegrityError:
-                # 極少數情況下發生衝突，重試一次
+            # 使用資料庫唯一約束保證訂單編號唯一性，衝突時重試（最多 5 次）
+            max_retries = 5
+            for attempt in range(max_retries):
                 order_no = _generate_order_no()
-                order = Order.objects.create(
-                    order_no=order_no,
-                    customer_name=data["customer_name"],
-                    customer_phone=data["customer_phone"],
-                    pickup_store_address=data["pickup_store_address"],
-                    total_amount=total_amount,
-                    status=Order.Status.NEW,
-                )
+                try:
+                    order = Order.objects.create(
+                        order_no=order_no,
+                        customer_name=data["customer_name"],
+                        customer_phone=data["customer_phone"],
+                        pickup_store_address=data["pickup_store_address"],
+                        total_amount=total_amount,
+                        status=Order.Status.NEW,
+                    )
+                    break
+                except IntegrityError:
+                    if attempt == max_retries - 1:
+                        return Response(
+                            {"detail": "無法生成唯一訂單編號，請稍後再試"},
+                            status=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                        )
 
             _create_order_items(order, items, products_by_id)
 

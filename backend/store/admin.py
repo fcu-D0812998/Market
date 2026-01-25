@@ -34,4 +34,3 @@ class OrderAdmin(admin.ModelAdmin):
     search_fields = ["order_no", "customer_phone", "customer_name"]
     inlines = [OrderItemInline]
 
-# Register your models here.

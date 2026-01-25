@@ -56,8 +56,7 @@ export type Order = {
 // 取得 CSRF Token（資安：防止 CSRF 攻擊）
 async function getCsrfToken(): Promise<string | null> {
   try {
-    const apiUrl = API_BASE_URL || '';
-    const res = await fetch(`${apiUrl}/api/csrf-token/`, { method: 'GET', credentials: 'include' });
+    const res = await fetch(`${API_BASE_URL}/api/csrf-token/`, { method: 'GET', credentials: 'include' });
     if (res.ok) {
       const data = await res.json();
       return data.csrfToken || null;
@@ -129,19 +128,28 @@ export async function adminDeleteTag(id: number): Promise<void> {
   await http(`/api/admin/tags/${id}/`, { method: 'DELETE' });
 }
 
-export async function listProducts(params?: { tags?: string[]; search?: string }): Promise<Product[]> {
+// 統一的查詢參數構建邏輯
+function buildQueryString(params: Record<string, string | string[] | undefined>): string {
   const qs = new URLSearchParams();
-  if (params?.tags?.length) qs.set('tags', params.tags.join(','));
-  if (params?.search) qs.set('search', params.search);
-  const suffix = qs.toString() ? `?${qs}` : '';
-  return http<Product[]>(`/api/products/${suffix}`);
+  for (const [key, value] of Object.entries(params)) {
+    if (value !== undefined && value !== null) {
+      if (Array.isArray(value) && value.length > 0) {
+        qs.set(key, value.join(','));
+      } else if (typeof value === 'string' && value) {
+        qs.set(key, value);
+      }
+    }
+  }
+  const str = qs.toString();
+  return str ? `?${str}` : '';
+}
+
+export async function listProducts(params?: { tags?: string[]; search?: string }): Promise<Product[]> {
+  return http<Product[]>(`/api/products/${buildQueryString(params || {})}`);
 }
 
 export async function adminListProducts(params?: { search?: string }): Promise<Product[]> {
-  const qs = new URLSearchParams();
-  if (params?.search) qs.set('search', params.search);
-  const suffix = qs.toString() ? `?${qs}` : '';
-  return http<Product[]>(`/api/admin/products/${suffix}`);
+  return http<Product[]>(`/api/admin/products/${buildQueryString(params || {})}`);
 }
 
 export async function adminCreateProduct(input: {
@@ -202,10 +210,7 @@ export async function createOrder(input: {
 }
 
 export async function listOrders(params?: { search?: string }): Promise<Order[]> {
-  const qs = new URLSearchParams();
-  if (params?.search) qs.set('search', params.search);
-  const suffix = qs.toString() ? `?${qs}` : '';
-  return http<Order[]>(`/api/orders/${suffix}`);
+  return http<Order[]>(`/api/orders/${buildQueryString(params || {})}`);
 }
 
 export async function adminUpdateOrderStatus(orderNo: string, status: 'NEW' | 'CONFIRMED' | 'CANCELLED'): Promise<Order> {
