@@ -164,14 +164,16 @@ DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
 # --- API / Dev settings ---
 # CORS 設定：允許的前端來源
-FRONTEND_URL = os.environ.get('FRONTEND_URL', 'http://localhost:5173')
+FRONTEND_URL = os.environ.get('FRONTEND_URL', 'http://localhost:5173').strip()
 CORS_ALLOWED_ORIGINS = [
-    FRONTEND_URL,
     "http://localhost:5173",
     "http://127.0.0.1:5173",
 ]
-# 移除重複值
-CORS_ALLOWED_ORIGINS = list(set(CORS_ALLOWED_ORIGINS))
+# 如果 FRONTEND_URL 有值且格式正確，加入列表
+if FRONTEND_URL and (FRONTEND_URL.startswith('http://') or FRONTEND_URL.startswith('https://')):
+    CORS_ALLOWED_ORIGINS.append(FRONTEND_URL)
+# 移除重複值和空值
+CORS_ALLOWED_ORIGINS = [origin for origin in set(CORS_ALLOWED_ORIGINS) if origin and origin.strip()]
 
 REST_FRAMEWORK = {
     "DEFAULT_AUTHENTICATION_CLASSES": [
@@ -192,7 +194,11 @@ SESSION_EXPIRE_AT_BROWSER_CLOSE = False  # 關閉瀏覽器不立即過期（使�
 CSRF_COOKIE_HTTPONLY = False  # 前端需要讀取 CSRF Token
 CSRF_COOKIE_SECURE = not DEBUG  # 生產環境（HTTPS）設為 True
 CSRF_COOKIE_SAMESITE = "Lax"
-CSRF_TRUSTED_ORIGINS = CORS_ALLOWED_ORIGINS.copy()
+# 只包含有效的 URL（必須有 scheme）
+CSRF_TRUSTED_ORIGINS = [
+    origin for origin in CORS_ALLOWED_ORIGINS
+    if origin and (origin.startswith('http://') or origin.startswith('https://'))
+]
 
 # CORS 設定（允許認證）
 CORS_ALLOW_CREDENTIALS = True  # 允許傳送 Cookie（Session）
