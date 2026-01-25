@@ -76,7 +76,7 @@ async function http<T>(path: string, init?: RequestInit): Promise<T> {
   const url = path.startsWith('/') ? `${baseUrl}${path}` : `${baseUrl}/${path}`;
   
   // 資安：對於需要認證的請求，取得 CSRF Token
-  const headers: HeadersInit = { 'Content-Type': 'application/json', ...(init?.headers ?? {}) };
+  const headers: Record<string, string> = { 'Content-Type': 'application/json', ...(init?.headers as Record<string, string> ?? {}) };
   
   // 如果是 POST/PUT/PATCH/DELETE，需要 CSRF Token
   const needsCsrf = ['POST', 'PUT', 'PATCH', 'DELETE'].includes(init?.method || '');

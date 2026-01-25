@@ -1,5 +1,5 @@
 import { Button, Card, Descriptions, Divider, Space, Typography, message } from 'antd';
-import React, { useEffect, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useLocation, useParams } from 'react-router-dom';
 
 import type { Order } from '../lib/api';

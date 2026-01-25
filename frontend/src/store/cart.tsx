@@ -1,4 +1,5 @@
-import React, { createContext, useContext, useMemo, useReducer } from 'react';
+import { createContext, useContext, useMemo, useReducer } from 'react';
+import type { ReactNode } from 'react';
 
 import type { Product, ProductVariant } from '../lib/api';
 
@@ -76,7 +77,7 @@ type CartApi = {
 
 const CartContext = createContext<CartApi | null>(null);
 
-export function CartProvider({ children }: { children: React.ReactNode }) {
+export function CartProvider({ children }: { children: ReactNode }) {
   const [state, dispatch] = useReducer(reducer, { items: [] });
   const api = useMemo<CartApi>(() => {
     const totalQuantity = state.items.reduce((sum, it) => sum + it.quantity, 0);

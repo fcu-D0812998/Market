@@ -1,5 +1,5 @@
 import { Button, Card, Form, Input, Modal, Space, Table, Typography, message } from 'antd';
-import React, { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 
 import type { Tag } from '../lib/api';
 import { adminCreateTag, adminDeleteTag, adminListTags } from '../lib/api';

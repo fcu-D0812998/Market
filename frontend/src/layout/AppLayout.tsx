@@ -1,13 +1,13 @@
 import { HomeOutlined, ShoppingCartOutlined } from '@ant-design/icons';
 import { Badge, Layout, Menu, Typography } from 'antd';
-import React from 'react';
+import type { ReactNode } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 
 import { useCart } from '../store/cart';
 
 const { Header, Content, Footer } = Layout;
 
-export function AppLayout({ children }: { children: React.ReactNode }) {
+export function AppLayout({ children }: { children: ReactNode }) {
   const { totalQuantity } = useCart();
   const location = useLocation();
   const selectedKey =

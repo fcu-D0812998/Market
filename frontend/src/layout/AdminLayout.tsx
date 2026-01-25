@@ -1,13 +1,13 @@
 import { AppstoreOutlined, LogoutOutlined, SettingOutlined, TagsOutlined, UnorderedListOutlined } from '@ant-design/icons';
 import { Button, Layout, Menu, Typography } from 'antd';
-import React from 'react';
+import type { ReactNode } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 
 import { useAuth } from '../store/auth';
 
 const { Header, Content, Footer } = Layout;
 
-export function AdminLayout({ children }: { children: React.ReactNode }) {
+export function AdminLayout({ children }: { children: ReactNode }) {
   const location = useLocation();
   const nav = useNavigate();
   const { user, logout } = useAuth();

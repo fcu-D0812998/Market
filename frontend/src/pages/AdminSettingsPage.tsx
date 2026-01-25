@@ -1,5 +1,5 @@
 import { Button, Card, Form, Input, Space, Typography, message } from 'antd';
-import React, { useEffect, useState } from 'react';
+import { useEffect, useState } from 'react';
 
 import { adminGetSettings, adminUpdateSettings } from '../lib/api';
 

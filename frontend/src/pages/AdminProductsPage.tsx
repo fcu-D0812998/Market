@@ -1,8 +1,8 @@
 import { Button, Card, Divider, Form, Input, InputNumber, Modal, Space, Switch, Table, Tag, Typography, message } from 'antd';
 import { DeleteOutlined, PlusOutlined } from '@ant-design/icons';
-import React, { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 
-import type { Product, ProductVariant } from '../lib/api';
+import type { Product } from '../lib/api';
 import { adminCreateProduct, adminDeleteProduct, adminListProducts, adminUpdateProduct } from '../lib/api';
 import { formatTwd } from '../lib/money';
 
