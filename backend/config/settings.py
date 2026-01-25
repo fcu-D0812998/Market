@@ -90,16 +90,15 @@ DATABASE_URL = os.environ.get('DATABASE_URL', '').strip()
 
 if DATABASE_URL:
     try:
-        # Try psycopg3 first (for Python 3.13+), fallback to psycopg2
         db_config = dj_database_url.parse(
             DATABASE_URL,
             conn_max_age=600,
             conn_health_checks=True,
         )
-        # If using psycopg3, ensure the engine is set correctly
+        # Django 5.1+ supports psycopg3, ensure we use it
         if 'ENGINE' in db_config and 'postgresql' in db_config['ENGINE']:
-            # Django 5.1+ supports psycopg3 via psycopg adapter
-            pass
+            # Force use of psycopg3 adapter
+            db_config['OPTIONS'] = db_config.get('OPTIONS', {})
         DATABASES = {
             'default': db_config
         }
