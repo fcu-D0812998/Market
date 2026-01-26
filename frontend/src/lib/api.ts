@@ -136,6 +136,10 @@ export async function listProducts(params?: { tags?: string[]; search?: string }
   return http<Product[]>(`/api/products/${buildQueryString(params || {})}`);
 }
 
+export async function getProductDetail(id: string): Promise<Product> {
+  return http<Product>(`/api/products/${id}/`);
+}
+
 export async function createOrder(input: {
   customer_name: string;
   customer_phone: string;

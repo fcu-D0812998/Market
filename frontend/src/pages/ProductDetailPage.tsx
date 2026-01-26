@@ -3,6 +3,7 @@ import { useEffect, useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
 
 import type { Product, ProductVariant } from '../lib/api';
+import { getProductDetail } from '../lib/api';
 import { formatTwd } from '../lib/money';
 import { useCart } from '../store/cart';
 
@@ -20,9 +21,7 @@ export function ProductDetailPage() {
       if (!id) return;
       setLoading(true);
       try {
-        const res = await fetch(`/api/products/${id}/`);
-        if (!res.ok) throw new Error('failed');
-        const data = (await res.json()) as Product;
+        const data = await getProductDetail(id);
         setProduct(data);
         // 如果有規格，預設選擇第一個啟用的規格
         if (data.variants && data.variants.length > 0) {
