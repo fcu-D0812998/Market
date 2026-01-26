@@ -32,7 +32,12 @@ SECRET_KEY = os.environ.get('SECRET_KEY', 'django-insecure-xc7*@10zyz@+bas%1v7i&
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = os.environ.get('DEBUG', 'False') == 'True'
 
-ALLOWED_HOSTS = os.environ.get('ALLOWED_HOSTS', 'localhost,127.0.0.1').split(',')
+# ALLOWED_HOSTS 設定
+allowed_hosts_str = os.environ.get('ALLOWED_HOSTS', 'localhost,127.0.0.1')
+ALLOWED_HOSTS = [h.strip() for h in allowed_hosts_str.split(',') if h.strip()]
+# 生產環境自動加入 .onrender.com
+if not DEBUG:
+    ALLOWED_HOSTS.append('.onrender.com')
 
 
 # Application definition
@@ -51,8 +56,8 @@ INSTALLED_APPS = [
 
 MIDDLEWARE = [
     'django.middleware.security.SecurityMiddleware',
+    'corsheaders.middleware.CorsMiddleware',  # 必須在 CommonMiddleware 之前
     'whitenoise.middleware.WhiteNoiseMiddleware',  # 靜態檔案服務（生產環境）
-    'corsheaders.middleware.CorsMiddleware',
     'django.contrib.sessions.middleware.SessionMiddleware',
     'django.middleware.common.CommonMiddleware',
     'django.middleware.csrf.CsrfViewMiddleware',
@@ -162,16 +167,17 @@ STATICFILES_STORAGE = 'whitenoise.storage.CompressedManifestStaticFilesStorage'
 
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
-# --- API / Dev settings ---
+# --- API / CORS settings ---
 # CORS 設定：允許的前端來源
-FRONTEND_URL = os.environ.get('FRONTEND_URL', 'http://localhost:5173').strip()
+FRONTEND_URL = os.environ.get('FRONTEND_URL', '').strip()
 CORS_ALLOWED_ORIGINS = [
     "http://localhost:5173",
     "http://127.0.0.1:5173",
 ]
 # 如果 FRONTEND_URL 有值且格式正確，加入列表
 if FRONTEND_URL and (FRONTEND_URL.startswith('http://') or FRONTEND_URL.startswith('https://')):
-    CORS_ALLOWED_ORIGINS.append(FRONTEND_URL)
+    if FRONTEND_URL not in CORS_ALLOWED_ORIGINS:
+        CORS_ALLOWED_ORIGINS.append(FRONTEND_URL)
 # 移除重複值和空值
 CORS_ALLOWED_ORIGINS = [origin for origin in set(CORS_ALLOWED_ORIGINS) if origin and origin.strip()]
 
@@ -184,16 +190,16 @@ REST_FRAMEWORK = {
 
 # Session 安全設定（資安強化）
 SESSION_COOKIE_HTTPONLY = True  # 防止 JavaScript 存取 Session Cookie
-SESSION_COOKIE_SECURE = not DEBUG  # 生產環境（HTTPS）設為 True
-SESSION_COOKIE_SAMESITE = "Lax"  # 防止 CSRF 攻擊
+SESSION_COOKIE_SECURE = not DEBUG  # 生產環境（HTTPS）設為 True，開發環境（HTTP）設為 False
+SESSION_COOKIE_SAMESITE = "None" if not DEBUG else "Lax"  # 跨站需要 None，開發環境用 Lax
 SESSION_COOKIE_AGE = 86400  # Session 過期時間：24 小時（秒）
 SESSION_SAVE_EVERY_REQUEST = True  # 每次請求都更新 Session 過期時間
 SESSION_EXPIRE_AT_BROWSER_CLOSE = False  # 關閉瀏覽器不立即過期（使用 SESSION_COOKIE_AGE）
 
 # CSRF 保護設定
 CSRF_COOKIE_HTTPONLY = False  # 前端需要讀取 CSRF Token
-CSRF_COOKIE_SECURE = not DEBUG  # 生產環境（HTTPS）設為 True
-CSRF_COOKIE_SAMESITE = "Lax"
+CSRF_COOKIE_SECURE = not DEBUG  # 生產環境（HTTPS）設為 True，開發環境（HTTP）設為 False
+CSRF_COOKIE_SAMESITE = "None" if not DEBUG else "Lax"  # 跨站需要 None，開發環境用 Lax
 # 只包含有效的 URL（必須有 scheme）
 CSRF_TRUSTED_ORIGINS = [
     origin for origin in CORS_ALLOWED_ORIGINS
