@@ -2,7 +2,6 @@ from __future__ import annotations
 
 from random import randint
 
-from django.contrib.auth import login, logout
 from django.db import IntegrityError, transaction
 from django.db.models import Q
 from django.utils import timezone
@@ -14,21 +13,14 @@ from rest_framework.views import APIView
 
 from .models import Order, OrderItem, Product, ShopSettings, Tag
 from .serializers import (
-    LoginSerializer,
     OrderCreateSerializer,
     OrderSerializer,
     ProductSerializer,
-    ProductWriteSerializer,
-    ShopSettingsSerializer,
     TagSerializer,
-    UserSerializer,
     calculate_total,
     get_product_name,
     get_product_price,
 )
-
-
-# ========== 認證相關 View ==========
 
 
 @api_view(['GET'])
@@ -42,62 +34,6 @@ def csrf_token_view(request):
     from django.middleware.csrf import get_token
     token = get_token(request)
     return Response({"csrfToken": token})
-
-
-class AdminLoginView(APIView):
-    """
-    後台登入 API（資安：使用 Session 認證）
-    POST /api/admin/login/
-    Body: { "username": "...", "password": "..." }
-    """
-
-    permission_classes = [permissions.AllowAny]
-
-    def post(self, request):
-        serializer = LoginSerializer(data=request.data)
-        serializer.is_valid(raise_exception=True)
-        user = serializer.validated_data["user"]
-
-        # 使用 Django 的 login() 建立 Session（資安：自動處理 Session 安全）
-        login(request, user)
-
-        return Response(
-            {
-                "message": "登入成功",
-                "user": UserSerializer(user).data,
-            },
-            status=status.HTTP_200_OK,
-        )
-
-
-class AdminLogoutView(APIView):
-    """
-    後台登出 API
-    POST /api/admin/logout/
-    """
-
-    permission_classes = [permissions.IsAuthenticated]
-
-    def post(self, request):
-        logout(request)
-        return Response({"message": "已登出"}, status=status.HTTP_200_OK)
-
-
-class AdminMeView(APIView):
-    """
-    檢查當前登入狀態 API
-    GET /api/admin/me/
-    """
-
-    permission_classes = [permissions.IsAuthenticated]
-
-    def get(self, request):
-        return Response(
-            {
-                "authenticated": True,
-                "user": UserSerializer(request.user).data,
-            }
-        )
 
 
 # ========== 公開 API ==========
@@ -133,107 +69,6 @@ class ProductDetailView(generics.RetrieveAPIView):
     serializer_class = ProductSerializer
 
 
-# ========== 後台管理 API（需要認證）==========
-
-
-class AdminTagListCreateView(generics.ListCreateAPIView):
-    """
-    後台標籤管理（資安：需要認證）
-    - GET: list all tags
-    - POST: create tag
-    """
-    permission_classes = [permissions.IsAuthenticated]
-    queryset = Tag.objects.order_by("name")
-    serializer_class = TagSerializer
-
-
-class AdminTagDetailView(generics.RetrieveDestroyAPIView):
-    """
-    後台標籤管理（資安：需要認證）
-    - GET: retrieve a tag
-    - DELETE: delete tag
-    """
-    permission_classes = [permissions.IsAuthenticated]
-    queryset = Tag.objects.all()
-    serializer_class = TagSerializer
-
-
-class AdminProductListCreateView(generics.ListCreateAPIView):
-    """
-    後台商品管理（資安：需要認證）
-    - GET: list all products (including inactive)
-    - POST: create product (supports tag_names)
-    """
-    permission_classes = [permissions.IsAuthenticated]
-
-    def get_queryset(self):
-        return Product.objects.all().prefetch_related("tags", "variants").order_by("id")
-
-    def get_serializer_class(self):
-        if self.request.method == "GET":
-            return ProductSerializer
-        return ProductWriteSerializer
-
-
-class AdminProductDetailView(generics.RetrieveUpdateDestroyAPIView):
-    """
-    後台商品管理（資安：需要認證）
-    - GET: retrieve a product
-    - PATCH/PUT: update (supports tag_names)
-    - DELETE: delete product
-    """
-    permission_classes = [permissions.IsAuthenticated]
-    queryset = Product.objects.all().prefetch_related("tags", "variants")
-    serializer_class = ProductWriteSerializer
-
-    def retrieve(self, request, *args, **kwargs):
-        obj = self.get_object()
-        return Response(ProductSerializer(obj).data)
-
-
-class AdminOrderUpdateView(APIView):
-    """
-    後台訂單管理（資安：需要認證）
-    Body: { "status": "NEW" | "CONFIRMED" | "CANCELLED" }
-    """
-    permission_classes = [permissions.IsAuthenticated]
-
-    def patch(self, request, order_no: str):
-        status_value = (request.data.get("status") or "").strip()
-        if status_value not in {Order.Status.NEW, Order.Status.CONFIRMED, Order.Status.CANCELLED}:
-            return Response({"detail": "status 不合法"}, status=status.HTTP_400_BAD_REQUEST)
-
-        try:
-            order = Order.objects.get(order_no=order_no)
-        except Order.DoesNotExist:
-            return Response({"detail": "找不到訂單"}, status=status.HTTP_404_NOT_FOUND)
-
-        order.status = status_value
-        order.save(update_fields=["status", "updated_at"])
-        data = OrderSerializer(order).data
-        data.update(_extras_for_order(order))
-        return Response(data)
-
-
-class AdminSettingsView(APIView):
-    """
-    後台商店設定（資安：需要認證）
-    GET: current settings
-    PATCH: update fields { line_oa_id, bank_name_code, bank_account }
-    """
-    permission_classes = [permissions.IsAuthenticated]
-
-    def get(self, request):
-        s = _get_settings()
-        return Response(ShopSettingsSerializer(s).data)
-
-    def patch(self, request):
-        s = _get_settings()
-        serializer = ShopSettingsSerializer(s, data=request.data, partial=True)
-        serializer.is_valid(raise_exception=True)
-        serializer.save()
-        _clear_settings_cache()  # 清除緩存，下次查詢時重新載入
-        return Response(serializer.data)
 
 
 class ApiRootView(APIView):
@@ -246,12 +81,6 @@ class ApiRootView(APIView):
                     "products": "/api/products/",
                     "orders_list": "/api/orders/",
                     "orders_create": "/api/orders/create/",
-                    "admin_login": "/api/admin/login/",
-                    "admin_logout": "/api/admin/logout/",
-                    "admin_me": "/api/admin/me/",
-                    "admin_products": "/api/admin/products/",
-                    "admin_orders_update": "/api/admin/orders/<order_no>/",
-                    "admin_settings": "/api/admin/settings/",
                 },
             }
         )
@@ -272,10 +101,6 @@ def _get_settings() -> ShopSettings:
     return _settings_cache
 
 
-def _clear_settings_cache() -> None:
-    """清除設定緩存（在設定更新時調用）"""
-    global _settings_cache
-    _settings_cache = None
 
 
 def _extras_for_order(order: Order) -> dict:

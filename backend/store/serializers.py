@@ -2,10 +2,9 @@ from __future__ import annotations
 
 from decimal import Decimal
 
-from django.contrib.auth import authenticate
 from rest_framework import serializers
 
-from .models import Order, OrderItem, Product, ProductVariant, ShopSettings, Tag
+from .models import Order, OrderItem, Product, ProductVariant, Tag
 
 
 class TagSerializer(serializers.ModelSerializer):
@@ -34,64 +33,6 @@ class ProductSerializer(serializers.ModelSerializer):
         return obj.variants.exists()
 
 
-class ProductVariantWriteSerializer(serializers.ModelSerializer):
-    class Meta:
-        model = ProductVariant
-        fields = ["id", "name", "price", "image_url", "is_active", "order"]
-
-
-class ProductWriteSerializer(serializers.ModelSerializer):
-    tag_names = serializers.ListField(child=serializers.CharField(), required=False)
-    variants = ProductVariantWriteSerializer(many=True, required=False)
-
-    class Meta:
-        model = Product
-        fields = ["id", "name", "price", "is_active", "image_url", "description", "tag_names", "variants"]
-
-    def validate_tag_names(self, value):
-        cleaned = []
-        for v in value:
-            v = (v or "").strip()
-            if v:
-                cleaned.append(v)
-        return cleaned
-
-    def create(self, validated_data):
-        tag_names = validated_data.pop("tag_names", [])
-        variants_data = validated_data.pop("variants", [])
-        product = super().create(validated_data)
-        if tag_names:
-            tags = [Tag.objects.get_or_create(name=n)[0] for n in tag_names]
-            product.tags.set(tags)
-        # 建立變體
-        for variant_data in variants_data:
-            ProductVariant.objects.create(product=product, **variant_data)
-        return product
-
-    def update(self, instance, validated_data):
-        tag_names = validated_data.pop("tag_names", None)
-        variants_data = validated_data.pop("variants", None)
-        product = super().update(instance, validated_data)
-        if tag_names is not None:
-            tags = [Tag.objects.get_or_create(name=n)[0] for n in tag_names]
-            product.tags.set(tags)
-        # 更新變體：更新現有的（有 id），新增新的（無 id），刪除不在列表中的
-        if variants_data is not None:
-            existing_ids = {v.get("id") for v in variants_data if v.get("id")}
-            # 刪除不在新列表中的變體
-            ProductVariant.objects.filter(product=product).exclude(id__in=existing_ids).delete()
-            # 更新或創建變體
-            for variant_data in variants_data:
-                variant_id = variant_data.get("id")
-                if variant_id and ProductVariant.objects.filter(id=variant_id, product=product).exists():
-                    # 創建新的 dict 避免修改原始數據
-                    update_data = {k: v for k, v in variant_data.items() if k != "id"}
-                    ProductVariant.objects.filter(id=variant_id).update(**update_data)
-                else:
-                    # 創建新的 dict 排除 id（如果存在）
-                    create_data = {k: v for k, v in variant_data.items() if k != "id"}
-                    ProductVariant.objects.create(product=product, **create_data)
-        return product
 
 
 class OrderItemCreateSerializer(serializers.Serializer):
@@ -139,41 +80,6 @@ class OrderSerializer(serializers.ModelSerializer):
         ]
 
 
-class ShopSettingsSerializer(serializers.ModelSerializer):
-    class Meta:
-        model = ShopSettings
-        fields = ["line_oa_id", "bank_name_code", "bank_account", "updated_at"]
-
-
-class LoginSerializer(serializers.Serializer):
-    """登入序列化器（資安：不返回密碼）"""
-
-    username = serializers.CharField(required=True, max_length=150)
-    password = serializers.CharField(required=True, write_only=True, style={"input_type": "password"})
-
-    def validate(self, attrs):
-        username = attrs.get("username")
-        password = attrs.get("password")
-
-        if username and password:
-            # 使用 Django 內建的 authenticate（會自動處理密碼雜湊驗證）
-            user = authenticate(username=username, password=password)
-            if not user:
-                raise serializers.ValidationError("使用者名稱或密碼錯誤")
-            if not user.is_active:
-                raise serializers.ValidationError("此帳號已被停用")
-            attrs["user"] = user
-        else:
-            raise serializers.ValidationError("請提供使用者名稱和密碼")
-
-        return attrs
-
-
-class UserSerializer(serializers.Serializer):
-    """使用者資訊序列化器（資安：不返回敏感資訊）"""
-
-    id = serializers.IntegerField()
-    username = serializers.CharField()
 
 
 def _get_variant(product: Product, variant_id: int | None) -> ProductVariant | None:
