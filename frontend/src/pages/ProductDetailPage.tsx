@@ -46,24 +46,21 @@ export function ProductDetailPage() {
 
   const handleAddToCart = () => {
     if (!product) return;
-
-    if (product.variants && product.variants.length > 0) {
-      // 有規格：開啟 Modal 選擇規格和數量
-      if (!selectedVariant) {
-        message.warning('請先選擇規格');
-        return;
-      }
-      setModalOpen(true);
-    } else {
-      // 無規格：直接加入購物車
-      cart.add(product, 1);
-      message.success('已加入購物車');
+    // 無論是否有規格，都開啟 Modal 選擇數量
+    if (product.variants && product.variants.length > 0 && !selectedVariant) {
+      message.warning('請先選擇規格');
+      return;
     }
+    setModalOpen(true);
   };
 
   const handleConfirmAdd = () => {
-    if (!product || !selectedVariant) return;
-    cart.add(product, quantity, selectedVariant.id);
+    if (!product) return;
+    if (product.variants && product.variants.length > 0 && !selectedVariant) {
+      message.warning('請先選擇規格');
+      return;
+    }
+    cart.add(product, quantity, selectedVariant?.id);
     message.success('已加入購物車');
     setModalOpen(false);
     setQuantity(1);
@@ -148,19 +145,21 @@ export function ProductDetailPage() {
         okText="確認加入"
         cancelText="取消"
       >
-        {product && selectedVariant && (
+        {product && (
           <Space direction="vertical" style={{ width: '100%' }}>
             <div>
               <Typography.Text strong>商品：</Typography.Text>
               <Typography.Text>{product.name}</Typography.Text>
             </div>
-            <div>
-              <Typography.Text strong>規格：</Typography.Text>
-              <Typography.Text>{selectedVariant.name}</Typography.Text>
-            </div>
+            {product.variants && product.variants.length > 0 && selectedVariant ? (
+              <div>
+                <Typography.Text strong>規格：</Typography.Text>
+                <Typography.Text>{selectedVariant.name}</Typography.Text>
+              </div>
+            ) : null}
             <div>
               <Typography.Text strong>價格：</Typography.Text>
-              <Typography.Text>{formatTwd(selectedVariant.price)}</Typography.Text>
+              <Typography.Text>{formatTwd(selectedVariant ? selectedVariant.price : product.price)}</Typography.Text>
             </div>
             <div>
               <Typography.Text strong>數量：</Typography.Text>
@@ -175,7 +174,7 @@ export function ProductDetailPage() {
             <div>
               <Typography.Text strong>小計：</Typography.Text>
               <Typography.Text style={{ fontSize: 18, color: '#ff4d4f' }}>
-                {formatTwd(Number(selectedVariant.price) * quantity)}
+                {formatTwd(Number(selectedVariant ? selectedVariant.price : product.price) * quantity)}
               </Typography.Text>
             </div>
           </Space>

@@ -46,18 +46,11 @@ export function ProductsPage() {
   }, [filteredParams]);
 
   const handleAddToCart = (product: Product) => {
-    if (product.variants && product.variants.length > 0) {
-      // 有規格：開啟 Modal 選擇規格和數量
-      const firstActive = product.variants.find((v) => v.is_active) || product.variants[0];
-      setSelectedProduct(product);
-      setSelectedVariant(firstActive || null);
-      setQuantity(1);
-      setModalOpen(true);
-    } else {
-      // 無規格：直接加入購物車
-      cart.add(product, 1);
-      message.success('已加入購物車');
-    }
+    const firstActive = product.variants?.find((v) => v.is_active) || product.variants?.[0] || null;
+    setSelectedProduct(product);
+    setSelectedVariant(firstActive);
+    setQuantity(1);
+    setModalOpen(true);
   };
 
   const handleConfirmAdd = () => {
@@ -158,7 +151,7 @@ export function ProductsPage() {
               <Typography.Text strong>商品：</Typography.Text>
               <Typography.Text>{selectedProduct.name}</Typography.Text>
             </div>
-            {selectedProduct.variants && selectedProduct.variants.length > 0 && (
+            {selectedProduct.variants && selectedProduct.variants.length > 0 ? (
               <>
                 <div>
                   <Typography.Text strong>規格：</Typography.Text>
@@ -185,32 +178,32 @@ export function ProductsPage() {
                     </Space>
                   </Radio.Group>
                 </div>
-                {selectedVariant && (
-                  <>
-                    <div>
-                      <Typography.Text strong>價格：</Typography.Text>
-                      <Typography.Text>{formatTwd(selectedVariant.price)}</Typography.Text>
-                    </div>
-                    <div>
-                      <Typography.Text strong>數量：</Typography.Text>
-                      <InputNumber
-                        min={1}
-                        max={999}
-                        value={quantity}
-                        onChange={(v) => setQuantity(v || 1)}
-                        style={{ width: 120 }}
-                      />
-                    </div>
-                    <div>
-                      <Typography.Text strong>小計：</Typography.Text>
-                      <Typography.Text style={{ fontSize: 18, color: '#ff4d4f' }}>
-                        {formatTwd(Number(selectedVariant.price) * quantity)}
-                      </Typography.Text>
-                    </div>
-                  </>
-                )}
               </>
-            )}
+            ) : null}
+            <div>
+              <Typography.Text strong>價格：</Typography.Text>
+              <Typography.Text>
+                {formatTwd(selectedVariant ? selectedVariant.price : selectedProduct.price)}
+              </Typography.Text>
+            </div>
+            <div>
+              <Typography.Text strong>數量：</Typography.Text>
+              <InputNumber
+                min={1}
+                max={999}
+                value={quantity}
+                onChange={(v) => setQuantity(v || 1)}
+                style={{ width: 120 }}
+              />
+            </div>
+            <div>
+              <Typography.Text strong>小計：</Typography.Text>
+              <Typography.Text style={{ fontSize: 18, color: '#ff4d4f' }}>
+                {formatTwd(
+                  Number(selectedVariant ? selectedVariant.price : selectedProduct.price) * quantity,
+                )}
+              </Typography.Text>
+            </div>
           </Space>
         )}
       </Modal>
