@@ -208,3 +208,8 @@ CSRF_TRUSTED_ORIGINS = [
 
 # CORS 設定（允許認證）
 CORS_ALLOW_CREDENTIALS = True  # 允許傳送 Cookie（Session）
+
+# 硬驗證：暫時開啟全域 CORS 來確認 middleware 是否有運作
+# 如果加上這個後仍然沒有 Access-Control-Allow-Origin header，
+# 代表 settings 不是線上在用的或 corsheaders 沒被載入
+CORS_ALLOW_ALL_ORIGINS = True
