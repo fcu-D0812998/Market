@@ -13,14 +13,14 @@ export function AdminLoginPage() {
   // 如果已經登入，重定向到商品管理
   useEffect(() => {
     if (!loading && user) {
-      nav('/products', { replace: true });
+      nav('/admin/products', { replace: true });
     }
   }, [user, loading, nav]);
 
   const onFinish = async (values: { username: string; password: string }) => {
     const success = await login(values.username, values.password);
     if (success) {
-      nav('/products', { replace: true });
+      nav('/admin/products', { replace: true });
     }
   };
 

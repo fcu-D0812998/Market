@@ -6,20 +6,31 @@ import { CheckoutPage } from './pages/CheckoutPage';
 import { CompletePage } from './pages/CompletePage';
 import { ProductDetailPage } from './pages/ProductDetailPage';
 import { ProductsPage } from './pages/ProductsPage';
+import AdminApp from './AdminApp';
 
 function App() {
   return (
-    <AppLayout>
-      <Routes>
-        <Route path="/" element={<ProductsPage />} />
-        <Route path="/products/:id" element={<ProductDetailPage />} />
-        <Route path="/cart" element={<CartPage />} />
-        <Route path="/checkout" element={<CheckoutPage />} />
-        <Route path="/complete/:orderNo" element={<CompletePage />} />
-        <Route path="*" element={<Navigate to="/" replace />} />
-      </Routes>
-    </AppLayout>
-  )
+    <Routes>
+      {/* 前台路由 */}
+      <Route
+        path="/*"
+        element={
+          <AppLayout>
+            <Routes>
+              <Route path="/" element={<ProductsPage />} />
+              <Route path="/products/:id" element={<ProductDetailPage />} />
+              <Route path="/cart" element={<CartPage />} />
+              <Route path="/checkout" element={<CheckoutPage />} />
+              <Route path="/complete/:orderNo" element={<CompletePage />} />
+              <Route path="*" element={<Navigate to="/" replace />} />
+            </Routes>
+          </AppLayout>
+        }
+      />
+      {/* 後台路由 */}
+      <Route path="/admin/*" element={<AdminApp />} />
+    </Routes>
+  );
 }
 
-export default App
+export default App;

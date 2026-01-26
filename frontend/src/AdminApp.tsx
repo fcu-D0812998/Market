@@ -21,7 +21,7 @@ function ProtectedRoute({ children }: { children: React.ReactNode }) {
   }
 
   if (!user) {
-    return <Navigate to="/login" replace />;
+    return <Navigate to="/admin/login" replace />;
   }
 
   return <>{children}</>;
@@ -30,19 +30,19 @@ function ProtectedRoute({ children }: { children: React.ReactNode }) {
 function AdminRoutes() {
   return (
     <Routes>
-      <Route path="/login" element={<AdminLoginPage />} />
+      <Route path="login" element={<AdminLoginPage />} />
       <Route
-        path="/"
+        path=""
         element={
           <ProtectedRoute>
             <AdminLayout>
-              <Navigate to="/products" replace />
+              <Navigate to="/admin/products" replace />
             </AdminLayout>
           </ProtectedRoute>
         }
       />
       <Route
-        path="/settings"
+        path="settings"
         element={
           <ProtectedRoute>
             <AdminLayout>
@@ -52,7 +52,7 @@ function AdminRoutes() {
         }
       />
       <Route
-        path="/tags"
+        path="tags"
         element={
           <ProtectedRoute>
             <AdminLayout>
@@ -62,7 +62,7 @@ function AdminRoutes() {
         }
       />
       <Route
-        path="/products"
+        path="products"
         element={
           <ProtectedRoute>
             <AdminLayout>
@@ -72,7 +72,7 @@ function AdminRoutes() {
         }
       />
       <Route
-        path="/orders"
+        path="orders"
         element={
           <ProtectedRoute>
             <AdminLayout>
@@ -81,7 +81,7 @@ function AdminRoutes() {
           </ProtectedRoute>
         }
       />
-      <Route path="*" element={<Navigate to="/products" replace />} />
+      <Route path="*" element={<Navigate to="/admin/products" replace />} />
     </Routes>
   );
 }
