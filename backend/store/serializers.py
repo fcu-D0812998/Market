@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import re
 from decimal import Decimal
 
 from rest_framework import serializers
@@ -29,8 +30,9 @@ class ProductSerializer(serializers.ModelSerializer):
         fields = ["id", "name", "price", "is_active", "has_variants", "image_url", "description", "tags", "variants"]
 
     def get_has_variants(self, obj: Product) -> bool:
-        """從 variants 推導，而非從資料庫欄位讀取"""
-        return obj.variants.exists()
+        """從已 prefetch 的 variants 判斷，避免 N+1 查詢"""
+        # 使用 all() 取得已 prefetch 的資料，而非 exists() 發新查詢
+        return len(obj.variants.all()) > 0
 
 
 
@@ -46,6 +48,13 @@ class OrderCreateSerializer(serializers.Serializer):
     customer_phone = serializers.CharField(max_length=30)
     pickup_store_address = serializers.CharField()
     items = OrderItemCreateSerializer(many=True, allow_empty=False)
+
+    def validate_customer_phone(self, value: str) -> str:
+        """驗證台灣手機號碼格式 (09xxxxxxxx)"""
+        cleaned = re.sub(r'[\s\-]', '', value)  # 移除空格和連字號
+        if not re.match(r'^09\d{8}$', cleaned):
+            raise serializers.ValidationError('請輸入有效的手機號碼格式 (09xxxxxxxx)')
+        return cleaned
 
 
 class OrderItemSerializer(serializers.ModelSerializer):
@@ -84,7 +93,7 @@ class OrderSerializer(serializers.ModelSerializer):
 
 def _get_variant(product: Product, variant_id: int | None) -> ProductVariant | None:
     """統一的 variant 查找邏輯：消除重複查詢"""
-    if not variant_id:
+    if variant_id is None:  # 明確判斷 None，避免 0 被誤判
         return None
     return product.variants.filter(id=variant_id, is_active=True).first()
 

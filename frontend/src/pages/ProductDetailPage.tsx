@@ -1,20 +1,18 @@
-import { Button, Card, InputNumber, Modal, Radio, Space, Tag as AntTag, Typography, message } from 'antd';
+import { Button, Card, Radio, Space, Tag as AntTag, Typography, message } from 'antd';
 import { useEffect, useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
 
+import { AddToCartModal } from '../components/AddToCartModal';
 import type { Product, ProductVariant } from '../lib/api';
 import { getProductDetail } from '../lib/api';
 import { formatTwd } from '../lib/money';
-import { useCart } from '../store/cart';
 
 export function ProductDetailPage() {
   const { id } = useParams();
-  const cart = useCart();
   const [product, setProduct] = useState<Product | null>(null);
   const [loading, setLoading] = useState(false);
   const [modalOpen, setModalOpen] = useState(false);
   const [selectedVariant, setSelectedVariant] = useState<ProductVariant | null>(null);
-  const [quantity, setQuantity] = useState(1);
 
   useEffect(() => {
     void (async () => {
@@ -26,12 +24,7 @@ export function ProductDetailPage() {
         // 如果有規格，預設選擇第一個啟用的規格
         if (data.variants && data.variants.length > 0) {
           const firstActive = data.variants.find((v) => v.is_active) || data.variants[0];
-          if (firstActive) {
-            setSelectedVariant(firstActive);
-          } else {
-            // 如果沒有啟用的規格，選擇第一個
-            setSelectedVariant(data.variants[0]);
-          }
+          setSelectedVariant(firstActive || null);
         } else {
           setSelectedVariant(null);
         }
@@ -45,7 +38,6 @@ export function ProductDetailPage() {
 
   const handleAddToCart = () => {
     if (!product) return;
-    // 無論是否有規格，都開啟 Modal 選擇數量
     if (product.variants && product.variants.length > 0 && !selectedVariant) {
       message.warning('請先選擇規格');
       return;
@@ -53,16 +45,9 @@ export function ProductDetailPage() {
     setModalOpen(true);
   };
 
-  const handleConfirmAdd = () => {
-    if (!product) return;
-    if (product.variants && product.variants.length > 0 && !selectedVariant) {
-      message.warning('請先選擇規格');
-      return;
-    }
-    cart.add(product, quantity, selectedVariant?.id);
-    message.success('已加入購物車');
+  const handleModalClose = () => {
     setModalOpen(false);
-    setQuantity(1);
+    message.success('已加入購物車');
   };
 
   if (!product && !loading) {
@@ -133,52 +118,11 @@ export function ProductDetailPage() {
         ) : null}
       </Card>
 
-      <Modal
-        title="選擇規格和數量"
+      <AddToCartModal
         open={modalOpen}
-        onOk={handleConfirmAdd}
-        onCancel={() => {
-          setModalOpen(false);
-          setQuantity(1);
-        }}
-        okText="確認加入"
-        cancelText="取消"
-      >
-        {product && (
-          <Space direction="vertical" style={{ width: '100%' }}>
-            <div>
-              <Typography.Text strong>商品：</Typography.Text>
-              <Typography.Text>{product.name}</Typography.Text>
-            </div>
-            {product.variants && product.variants.length > 0 && selectedVariant ? (
-              <div>
-                <Typography.Text strong>規格：</Typography.Text>
-                <Typography.Text>{selectedVariant.name}</Typography.Text>
-              </div>
-            ) : null}
-            <div>
-              <Typography.Text strong>價格：</Typography.Text>
-              <Typography.Text>{formatTwd(selectedVariant ? selectedVariant.price : product.price)}</Typography.Text>
-            </div>
-            <div>
-              <Typography.Text strong>數量：</Typography.Text>
-              <InputNumber
-                min={1}
-                max={999}
-                value={quantity}
-                onChange={(v) => setQuantity(v || 1)}
-                style={{ width: 120 }}
-              />
-            </div>
-            <div>
-              <Typography.Text strong>小計：</Typography.Text>
-              <Typography.Text style={{ fontSize: 18, color: '#ff4d4f' }}>
-                {formatTwd(Number(selectedVariant ? selectedVariant.price : product.price) * quantity)}
-              </Typography.Text>
-            </div>
-          </Space>
-        )}
-      </Modal>
+        product={product}
+        onClose={handleModalClose}
+      />
     </>
   );
 }

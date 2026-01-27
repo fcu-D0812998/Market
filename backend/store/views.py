@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from decimal import Decimal
 from random import randint
 
 from django.db import IntegrityError, transaction
@@ -90,15 +91,10 @@ def _line_chat_url(line_oa_id: str) -> str:
     return f"https://line.me/R/ti/p/{line_oa_id}"
 
 
-# 模組級緩存：避免每次請求都查詢資料庫
-_settings_cache: ShopSettings | None = None
-
-
 def _get_settings() -> ShopSettings:
-    global _settings_cache
-    if _settings_cache is None:
-        _settings_cache, _ = ShopSettings.objects.get_or_create(singleton_key="default")
-    return _settings_cache
+    """每次請求都從資料庫讀取，確保設定更新後立即生效"""
+    settings, _ = ShopSettings.objects.get_or_create(singleton_key="default")
+    return settings
 
 
 
@@ -205,7 +201,9 @@ class OrderCreateView(APIView):
 
 
 class OrderListView(generics.ListAPIView):
+    """訂單列表（需要管理員認證，保護客戶個資）"""
     serializer_class = OrderSerializer
+    permission_classes = [permissions.IsAdminUser]
 
     def get_queryset(self):
         qs = Order.objects.prefetch_related("items").order_by("-created_at")

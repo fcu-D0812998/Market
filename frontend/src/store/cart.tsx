@@ -5,6 +5,8 @@ import type { Product, ProductVariant } from '../lib/api';
 
 export type CartItem = { product: Product; quantity: number; variantId?: number };
 
+const CART_STORAGE_KEY = 'market_cart';
+
 // 統一的 variant 查找邏輯：消除重複
 function getVariant(product: Product, variantId?: number): ProductVariant | undefined {
   if (!variantId || !product.variants) return undefined;
@@ -17,6 +19,31 @@ function getItemPrice(item: CartItem): number {
   return Number(variant?.price || item.product.price);
 }
 
+// 從 localStorage 載入購物車狀態
+function loadCartFromStorage(): CartItem[] {
+  try {
+    const stored = localStorage.getItem(CART_STORAGE_KEY);
+    if (stored) {
+      const parsed = JSON.parse(stored);
+      if (Array.isArray(parsed)) {
+        return parsed;
+      }
+    }
+  } catch {
+    // localStorage 不可用或資料損壞，回傳空陣列
+  }
+  return [];
+}
+
+// 儲存購物車狀態到 localStorage
+function saveCartToStorage(items: CartItem[]): void {
+  try {
+    localStorage.setItem(CART_STORAGE_KEY, JSON.stringify(items));
+  } catch {
+    // localStorage 不可用，靜默失敗
+  }
+}
+
 type CartState = { items: CartItem[] };
 
 type Action =
@@ -26,6 +53,8 @@ type Action =
   | { type: 'clear' };
 
 function reducer(state: CartState, action: Action): CartState {
+  let newState: CartState;
+
   switch (action.type) {
     case 'add': {
       const q = Math.max(1, Math.floor(action.quantity));
@@ -34,35 +63,44 @@ function reducer(state: CartState, action: Action): CartState {
         (x) => x.product.id === action.product.id && x.variantId === action.variantId,
       );
       if (existing) {
-        return {
+        newState = {
           items: state.items.map((x) =>
             x.product.id === action.product.id && x.variantId === action.variantId
               ? { ...x, quantity: x.quantity + q }
               : x,
           ),
         };
+      } else {
+        newState = { items: [...state.items, { product: action.product, quantity: q, variantId: action.variantId }] };
       }
-      return { items: [...state.items, { product: action.product, quantity: q, variantId: action.variantId }] };
+      break;
     }
     case 'setQty': {
       const q = Math.max(1, Math.floor(action.quantity));
-      return {
+      newState = {
         items: state.items.map((x) =>
           x.product.id === action.productId && x.variantId === action.variantId ? { ...x, quantity: q } : x,
         ),
       };
+      break;
     }
     case 'remove':
-      return {
+      newState = {
         items: state.items.filter(
           (x) => !(x.product.id === action.productId && x.variantId === action.variantId),
         ),
       };
+      break;
     case 'clear':
-      return { items: [] };
+      newState = { items: [] };
+      break;
     default:
       return state;
   }
+
+  // 每次狀態變更後儲存到 localStorage
+  saveCartToStorage(newState.items);
+  return newState;
 }
 
 type CartApi = {
@@ -78,7 +116,9 @@ type CartApi = {
 const CartContext = createContext<CartApi | null>(null);
 
 export function CartProvider({ children }: { children: ReactNode }) {
-  const [state, dispatch] = useReducer(reducer, { items: [] });
+  // 初始化時從 localStorage 載入
+  const [state, dispatch] = useReducer(reducer, { items: loadCartFromStorage() });
+
   const api = useMemo<CartApi>(() => {
     const totalQuantity = state.items.reduce((sum, it) => sum + it.quantity, 0);
     const totalAmount = state.items.reduce((sum, it) => sum + getItemPrice(it) * it.quantity, 0);
@@ -101,5 +141,3 @@ export function useCart(): CartApi {
   if (!ctx) throw new Error('useCart must be used within CartProvider');
   return ctx;
 }
-
-

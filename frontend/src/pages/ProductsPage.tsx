@@ -1,13 +1,12 @@
-import { Button, Card, Checkbox, Col, Input, InputNumber, Modal, Radio, Row, Space, Tag as AntTag, Typography, message } from 'antd';
+import { Button, Card, Checkbox, Col, Input, Row, Space, Tag as AntTag, Typography, message } from 'antd';
 import { useEffect, useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
 
-import { listProducts, listTags, type Product, type ProductVariant, type Tag } from '../lib/api';
+import { AddToCartModal } from '../components/AddToCartModal';
+import { listProducts, listTags, type Product, type Tag } from '../lib/api';
 import { formatTwd } from '../lib/money';
-import { useCart } from '../store/cart';
 
 export function ProductsPage() {
-  const cart = useCart();
   const [loading, setLoading] = useState(false);
   const [tags, setTags] = useState<Tag[]>([]);
   const [products, setProducts] = useState<Product[]>([]);
@@ -15,8 +14,6 @@ export function ProductsPage() {
   const [search, setSearch] = useState('');
   const [modalOpen, setModalOpen] = useState(false);
   const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
-  const [selectedVariant, setSelectedVariant] = useState<ProductVariant | null>(null);
-  const [quantity, setQuantity] = useState(1);
 
   const filteredParams = useMemo(() => ({ tags: selectedTags, search: search.trim() || undefined }), [selectedTags, search]);
 
@@ -46,25 +43,14 @@ export function ProductsPage() {
   }, [filteredParams]);
 
   const handleAddToCart = (product: Product) => {
-    const firstActive = product.variants?.find((v) => v.is_active) || product.variants?.[0] || null;
     setSelectedProduct(product);
-    setSelectedVariant(firstActive);
-    setQuantity(1);
     setModalOpen(true);
   };
 
-  const handleConfirmAdd = () => {
-    if (!selectedProduct) return;
-    if (selectedProduct.variants && selectedProduct.variants.length > 0 && !selectedVariant) {
-      message.warning('請選擇規格');
-      return;
-    }
-    cart.add(selectedProduct, quantity, selectedVariant?.id);
-    message.success('已加入購物車');
+  const handleModalClose = () => {
     setModalOpen(false);
     setSelectedProduct(null);
-    setSelectedVariant(null);
-    setQuantity(1);
+    message.success('已加入購物車');
   };
 
   return (
@@ -132,83 +118,11 @@ export function ProductsPage() {
 
       {!loading && products.length === 0 ? <Typography.Text type="secondary">沒有符合條件的商品</Typography.Text> : null}
 
-      <Modal
-        title="選擇規格和數量"
+      <AddToCartModal
         open={modalOpen}
-        onOk={handleConfirmAdd}
-        onCancel={() => {
-          setModalOpen(false);
-          setSelectedProduct(null);
-          setSelectedVariant(null);
-          setQuantity(1);
-        }}
-        okText="確認加入"
-        cancelText="取消"
-      >
-        {selectedProduct && (
-          <Space direction="vertical" style={{ width: '100%' }}>
-            <div>
-              <Typography.Text strong>商品：</Typography.Text>
-              <Typography.Text>{selectedProduct.name}</Typography.Text>
-            </div>
-            {selectedProduct.variants && selectedProduct.variants.length > 0 ? (
-              <>
-                <div>
-                  <Typography.Text strong>規格：</Typography.Text>
-                  <Radio.Group
-                    value={selectedVariant?.id}
-                    onChange={(e) => {
-                      const variant = selectedProduct.variants?.find((v) => v.id === e.target.value);
-                      if (variant) {
-                        setSelectedVariant(variant);
-                      }
-                    }}
-                  >
-                    <Space direction="vertical">
-                      {selectedProduct.variants
-                        .filter((v) => v.is_active)
-                        .map((v) => (
-                          <Radio key={v.id} value={v.id}>
-                            <Space>
-                              <span>{v.name}</span>
-                              <span style={{ color: '#888' }}>{formatTwd(v.price)}</span>
-                            </Space>
-                          </Radio>
-                        ))}
-                    </Space>
-                  </Radio.Group>
-                </div>
-              </>
-            ) : null}
-            <div>
-              <Typography.Text strong>價格：</Typography.Text>
-              <Typography.Text>
-                {formatTwd(selectedVariant ? selectedVariant.price : selectedProduct.price)}
-              </Typography.Text>
-            </div>
-            <div>
-              <Typography.Text strong>數量：</Typography.Text>
-              <InputNumber
-                min={1}
-                max={999}
-                value={quantity}
-                onChange={(v) => setQuantity(v || 1)}
-                style={{ width: 120 }}
-              />
-            </div>
-            <div>
-              <Typography.Text strong>小計：</Typography.Text>
-              <Typography.Text style={{ fontSize: 18, color: '#ff4d4f' }}>
-                {formatTwd(
-                  Number(selectedVariant ? selectedVariant.price : selectedProduct.price) * quantity,
-                )}
-              </Typography.Text>
-            </div>
-          </Space>
-        )}
-      </Modal>
+        product={selectedProduct}
+        onClose={handleModalClose}
+      />
     </Space>
   );
 }
-
-

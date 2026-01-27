@@ -2,7 +2,7 @@ import { Button, Card, Descriptions, Divider, Space, Typography, message } from 
 import { useEffect, useState } from 'react';
 import { useLocation, useParams } from 'react-router-dom';
 
-import type { Order } from '../lib/api';
+import { getOrder, type Order } from '../lib/api';
 import { formatTwd } from '../lib/money';
 
 export function CompletePage() {
@@ -15,9 +15,8 @@ export function CompletePage() {
       if (order) return;
       if (!orderNo) return;
       try {
-        const res = await fetch(`/api/orders/${orderNo}/`);
-        if (!res.ok) throw new Error('failed');
-        setOrder((await res.json()) as Order);
+        const data = await getOrder(orderNo);
+        setOrder(data);
       } catch (e) {
         message.error('載入訂單資訊失敗');
       }

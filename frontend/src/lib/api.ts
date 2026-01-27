@@ -149,4 +149,6 @@ export async function createOrder(input: {
   return http<Order>('/api/orders/create/', { method: 'POST', body: JSON.stringify(input) });
 }
 
-
+export async function getOrder(orderNo: string): Promise<Order> {
+  return http<Order>(`/api/orders/${orderNo}/`);
+}
