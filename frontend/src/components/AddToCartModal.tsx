@@ -8,7 +8,8 @@ import { useCart } from '../store/cart';
 interface AddToCartModalProps {
     open: boolean;
     product: Product | null;
-    onClose: () => void;
+    /** onClose(added: boolean) - added=true 表示已加入購物車，false 表示取消 */
+    onClose: (added: boolean) => void;
 }
 
 export function AddToCartModal({ open, product, onClose }: AddToCartModalProps) {
@@ -31,12 +32,12 @@ export function AddToCartModal({ open, product, onClose }: AddToCartModalProps) 
             return; // 需要選擇規格
         }
         cart.add(product, quantity, selectedVariant?.id);
-        onClose();
+        onClose(true); // 成功加入購物車
     };
 
     const handleCancel = () => {
         setQuantity(1);
-        onClose();
+        onClose(false); // 取消，未加入購物車
     };
 
     const currentPrice = selectedVariant ? selectedVariant.price : product?.price || '0';

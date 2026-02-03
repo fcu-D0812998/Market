@@ -45,9 +45,11 @@ export function ProductDetailPage() {
     setModalOpen(true);
   };
 
-  const handleModalClose = () => {
+  const handleModalClose = (added: boolean) => {
     setModalOpen(false);
-    message.success('已加入購物車');
+    if (added) {
+      message.success('已加入購物車');
+    }
   };
 
   if (!product && !loading) {

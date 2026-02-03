@@ -30,7 +30,7 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 SECRET_KEY = os.environ.get('SECRET_KEY', 'django-insecure-xc7*@10zyz@+bas%1v7i&-uoyu_3q)29d6_+jk$@os2-e6e-+_')
 
 # SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = os.environ.get('DEBUG', 'False') == 'True'
+DEBUG = os.environ.get('DEBUG', 'True') == 'True'
 
 # ALLOWED_HOSTS 設定
 allowed_hosts_str = os.environ.get('ALLOWED_HOSTS', 'localhost,127.0.0.1')
@@ -43,6 +43,7 @@ if not DEBUG:
 # Application definition
 
 INSTALLED_APPS = [
+    'django.contrib.admin',
     'django.contrib.auth',
     'django.contrib.contenttypes',
     'django.contrib.sessions',
@@ -52,6 +53,8 @@ INSTALLED_APPS = [
     'corsheaders',
     'store',
 ]
+
+WSGI_APPLICATION = 'config.wsgi.application'
 
 MIDDLEWARE = [
     'django.middleware.security.SecurityMiddleware',
@@ -170,8 +173,13 @@ DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 # CORS 設定：允許的前端來源
 FRONTEND_URL = os.environ.get('FRONTEND_URL', '').strip()
 CORS_ALLOWED_ORIGINS = [
+    # 本地開發
     "http://localhost:5173",
     "http://127.0.0.1:5173",
+    "http://localhost:5174",
+    "http://127.0.0.1:5174",
+    # Render 生產環境
+    "https://market-frontend-seh3.onrender.com",
 ]
 # 如果 FRONTEND_URL 有值且格式正確，加入列表
 if FRONTEND_URL and (FRONTEND_URL.startswith('http://') or FRONTEND_URL.startswith('https://')):

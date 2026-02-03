@@ -17,7 +17,7 @@ export function AppLayout({ children }: { children: ReactNode }) {
     <Layout style={{ minHeight: '100%' }}>
       <Header style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
         <Typography.Title level={4} style={{ color: '#fff', margin: 0 }}>
-          吉璿行
+          阿立小舖
         </Typography.Title>
         <Menu
           theme="dark"
@@ -45,7 +45,7 @@ export function AppLayout({ children }: { children: ReactNode }) {
       <Content style={{ padding: 24 }}>
         <div style={{ maxWidth: 1100, margin: '0 auto' }}>{children}</div>
       </Content>
-      <Footer style={{ textAlign: 'center' }}>Market MVP · React + Vite + Ant Design · Django</Footer>
+      <Footer style={{ textAlign: 'center', padding: '12px 50px' }} />
     </Layout>
   );
 }
